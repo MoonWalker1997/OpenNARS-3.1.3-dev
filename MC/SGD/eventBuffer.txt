@@ -1,0 +1,7 @@
+title EventBufferMC
+
+EventBufferMC.compound_generation() -> EventBufferMC.step():
+EventBufferMC.dfs() -> EventBufferMC.compound_generation():
+EventBufferMC.local_evaluation() -> EventBufferMC.step():
+EventBufferMC.memory_based_evaluation() -> EventBufferMC.step():
+EventBufferMC.prediction_generation() -> EventBufferMC.step():

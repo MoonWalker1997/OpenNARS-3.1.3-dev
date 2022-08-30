@@ -2,6 +2,10 @@ package nars.MC;
 
 import java.util.ArrayList;
 
+/*
+* Agenda is a
+* */
+
 public class AgendaMC {
 
     private int remaining_time = 0;

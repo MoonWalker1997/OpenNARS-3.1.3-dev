@@ -15,25 +15,25 @@ import java.util.ArrayList;
 
 import static java.lang.Float.min;
 
-public class EventBufferMC {
+public abstract class BufferMC {
 
-    protected double priority_decay = 0.1; // when the priority will be punished, the default hyperparameter
-    protected double priority_develop = 10; // when the priority will be rewarded, the default hyperparameter
+    private double priority_decay; // when the priority will be punished, the default hyperparameter
+    private double priority_develop; // when the priority will be rewarded, the default hyperparameter
 
     // since each buffer needs to communicate with the main memory, here is a reference
     // make it static since different buffers share the same memory reference
-    protected Memory memory = null;
+    private Memory memory;
 
     // 0 initialization for the storage hyperparameters
-    protected int observation_capacity = 0;
-    protected int anticipation_capacity = 0;
-    protected int num_slot_one_side = 0;
-    protected int num_slot = 0;
+    private int observation_capacity;
+    private int anticipation_capacity;
+    private int num_slot_one_side;
+    private int num_slot;
 
-    protected ArrayList<SlotMC> timeSlots = new ArrayList<SlotMC>(); // first part of the buffer, time slots
-    protected PriorityQueueMC predictionTable = null; // second part of the buffer, prediction table
+    private ArrayList<SlotMC> timeSlots; // first part of the buffer, time slots
+    private PriorityQueueMC predictionTable; // second part of the buffer, prediction table
 
-    protected int present = 0; // an indicator of the index of the present time slot
+    private int present; // an indicator of the index of the present time slot
 
     // can be used to filter out the compound with a very low priority
 //     private double compound_generation_threshold = 0.1;
@@ -56,7 +56,7 @@ public class EventBufferMC {
 //        return abduction(v2, v1);
 //    }
 
-    public EventBufferMC(int num_slot, int observation_capacity, int anticipation_capacity,
+    public BufferMC(int num_slot, int observation_capacity, int anticipation_capacity,
                          int prediction_capacity, Memory memory) {
 
         this.memory = memory;
@@ -80,7 +80,7 @@ public class EventBufferMC {
      * @param Tasks: atomic events to generate compounds
      * @param n:     num of atomic events
      */
-    protected void dfs(ArrayList<Task> Tasks, int index, int count, boolean[] flag, int n) {
+    private void dfs(ArrayList<Task> Tasks, int index, int count, boolean[] flag, int n) {
         if (count == 0) {
             ArrayList<Term> tempTerms = new ArrayList<Term>();
             for (int i = 0; i < n; i++) {
