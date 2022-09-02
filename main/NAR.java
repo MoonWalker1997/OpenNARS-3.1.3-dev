@@ -4,9 +4,6 @@ import nars.MC.EventBufferMC;
 import nars.MC.InternalBufferMC;
 import nars.MC.OverallBufferMC;
 import nars.MC.SensoryMotorChannelMC;
-import nars.MC.channels.ExpChannel1;
-import nars.MC.channels.ExpChannel2;
-import nars.MC.channels.ExpChannel3;
 import nars.MC.channels.ExpChannel4;
 import nars.MC.channels.ExpChannel5;
 import nars.entity.Stamp;
@@ -72,33 +69,37 @@ public class NAR {
     /**
      * Overall Experience Buffer for input and tasks from internalBuffer
      */
-    private final OverallBufferMC globalBuffer;
+    private final OverallBufferMC overallBuffer;
     //private final Experience_From_Narsese narsese_Channel;
 
     private final int internal_Duration = Parameters.MAX_BUFFER_DURATION_FACTOR * Parameters.DURATION_FOR_INTERNAL_BUFFER;
     private final int global_Duration = Parameters.MAX_BUFFER_DURATION_FACTOR * Parameters.DURATION_FOR_GLOBAL_BUFFER;
 
     public NAR() {
-        memory = new Memory(this);
-        inputChannels = new ArrayList();
+        memory = new Memory(this); // memory initialization
+        inputChannels = new ArrayList(); // a container of sensorimotor channels
 
+        // each sensorimotor channel contains one event buffer
         EventBufferMC event_buffer1 = new EventBufferMC(5, 5, 5, 5, memory);
         EventBufferMC event_buffer2 = new EventBufferMC(5, 5, 5, 5, memory);
 //        EventBufferMC event_buffer3 = new EventBufferMC(5, 5, 5, 5, memory);
-
 
         SensoryMotorChannelMC channel1 = new ExpChannel4(event_buffer1, null, memory);
         SensoryMotorChannelMC channel2 = new ExpChannel5(event_buffer2, null, memory);
 //        SensoryMotorChannelMC channel3 = new ExpChannel3(event_buffer3, null, memory);
 
+        // channel registration
         inputChannels.add(channel1);
         inputChannels.add(channel2);
 //        inputChannels.add(channel3);
 
-        outputChannels = new ArrayList();
+        outputChannels = new ArrayList(); // TODO: a container of output channels
 
+        // an internal buffer
         internalBuffer = new InternalBufferMC(5, 5, 5, 5, memory);
-        globalBuffer = new OverallBufferMC(5, 5, 5, 5, memory);
+
+        // an overall buffer
+        overallBuffer = new OverallBufferMC(5, 5, 5, 5, memory);
     }
 
     public void addInputChannel(SensoryMotorChannelMC channel) {
@@ -192,6 +193,7 @@ public class NAR {
             clock++;
             tickTimer();
 
+            // a container of tasks inputted from sensorimotor channels
             ArrayList<Task> tasks_from_channels = new ArrayList<>();
             for (int i = 0; i < this.inputChannels.size(); i++) {
                 Task tmp = this.inputChannels.get(i).generate_Narsese_input();
@@ -200,23 +202,38 @@ public class NAR {
                 }
             }
 
+            // get all previous inference results; they are the input of the internal buffer
             ArrayList<Task> previous_inference_results = this.memory.getPrevious_inference_result();
-
             this.memory.setPrevious_inference_result(new ArrayList<>());
 
-            Task task_from_internal_buffer = this.internalBuffer.step(previous_inference_results);
+            // following the buffer cycle of the internal buffer, the task forwarded to the overall buffer
+            Task task_from_internal_buffer = this.internalBuffer.step(previous_inference_results, false);
 
+            // merge
             if (task_from_internal_buffer != null) {
                 tasks_from_channels.add(task_from_internal_buffer);
             }
 
-            ArrayList<Task> tasks_for_overall_buffer = tasks_from_channels;
+            ArrayList<Task> tasks_for_overall_buffer = tasks_from_channels; // just give it a new name
+            Task task_from_overall_buffer = this.overallBuffer.step(tasks_for_overall_buffer, false);
 
-            Task task_from_overall_buffer = this.globalBuffer.step(tasks_for_overall_buffer);
-
+            // task selected by the overall buffer will be sent to the memory
             if (task_from_overall_buffer != null) {
                 this.memory.immediateProcess(task_from_overall_buffer);
             }
+
+            // a quick reference
+//            public void immediateProcess(Task task) {
+//                currentTask = task; // one of the two places where this variable is set
+//                recorder.append("!!! Insert: " + task + "\n");
+//                //System.out.println("!!! Insert: " + task + "\n");
+//                currentTerm = task.getContent();
+//                currentConcept = getConcept(currentTerm);// Creates a new concept
+//                if (currentConcept != null) {
+//                    activateConcept(currentConcept, task.getBudget()); // initializes this concept
+//                    currentConcept.directProcess(task);
+//                }
+//            }
 
             memory.workCycle(clock);
 
@@ -327,8 +344,8 @@ public class NAR {
         return internalBuffer;
     }
 
-    public OverallBufferMC getGlobalBuffer() {
-        return globalBuffer;
+    public OverallBufferMC getOverallBuffer() {
+        return overallBuffer;
     }
 
     /**
