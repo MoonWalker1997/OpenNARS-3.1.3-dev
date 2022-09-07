@@ -17,47 +17,38 @@ import static java.lang.Float.min;
 
 public abstract class BufferMC {
 
-    private double priority_decay; // when the priority will be punished, the default hyperparameter
-    private double priority_develop; // when the priority will be rewarded, the default hyperparameter
+    protected double priority_decay; // when the priority will be punished, the default hyperparameter
+    protected double priority_develop; // when the priority will be rewarded, the default hyperparameter
 
     // since each buffer needs to communicate with the main memory, here is a reference
     // make it static since different buffers share the same memory reference
-    private Memory memory;
+    protected Memory memory;
 
     // 0 initialization for the storage hyperparameters
-    private int observation_capacity;
-    private int anticipation_capacity;
-    private int num_slot_one_side;
-    private int num_slot;
+    protected int observation_capacity;
+    protected int anticipation_capacity;
+    protected int num_slot_one_side;
+    protected int num_slot;
 
-    private ArrayList<SlotMC> timeSlots; // first part of the buffer, time slots
-    private PriorityQueueMC predictionTable; // second part of the buffer, prediction table
+    protected ArrayList<SlotMC> timeSlots = new ArrayList<>(); // first part of the buffer, time slots
+    protected PriorityQueueMC predictionTable; // second part of the buffer, prediction table
 
-    private int present; // an indicator of the index of the present time slot
+    protected int present; // an indicator of the index of the present time slot
 
-    // can be used to filter out the compound with a very low priority
-//     private double compound_generation_threshold = 0.1;
+    protected Boolean temporal; // whether this buffer supports the temporal reasoning
 
-    // abduction truth-value function, which is already in NARS
-//    static TruthValue abduction(TruthValue v1, TruthValue v2) {
-//        if (v1.getAnalytic() || v2.getAnalytic()) {
-//            return new TruthValue(0.5f, 0f);
-//        }
-//        float f1 = v1.getFrequency();
-//        float f2 = v2.getFrequency();
-//        float c1 = v1.getConfidence();
-//        float c2 = v2.getConfidence();
-//        float w = UtilityFunctions.and(f2, c1, c2);
-//        float c = UtilityFunctions.w2c(w);
-//        return new TruthValue(f1, c);
-//    }
-//
-//    static TruthValue induction(TruthValue v1, TruthValue v2) {
-//        return abduction(v2, v1);
-//    }
-
+    /**
+     * Constructor, different buffers shall use the same constructor
+     *
+     * @param num_slot:              number of future/previous time slots on ONE side
+     * @param observation_capacity:  number of observations allowed in each time slot
+     * @param anticipation_capacity: number of anticipations allowed in each time slot
+     * @param prediction_capacity:   number of predictions allowed in the prediction table
+     * @param memory:                memory referred
+     * @param temporal:              whether this buffer allows temporal-related processing (inter-time slots precessing)
+     */
     public BufferMC(int num_slot, int observation_capacity, int anticipation_capacity,
-                         int prediction_capacity, Memory memory) {
+                    int prediction_capacity, Memory memory, Boolean temporal) {
 
         this.memory = memory;
         this.observation_capacity = observation_capacity;
@@ -70,7 +61,18 @@ public abstract class BufferMC {
             this.timeSlots.add(new SlotMC(observation_capacity, anticipation_capacity));
         }
         this.present = num_slot;
+        this.temporal = temporal;
         this.predictionTable = new PriorityQueueMC(prediction_capacity);
+    }
+
+    /**
+     * Check whether this.concurrent_observations is empty, usually used for checking whether the channel has
+     * some initial atomic inputs at the beginning.
+     *
+     * @return: whether this.concurrent_observations is empty
+     */
+    public Boolean isEmpty() {
+        return this.timeSlots.get(this.present).getConcurrent_observations().get_data().size() == 0;
     }
 
     /**
@@ -80,7 +82,7 @@ public abstract class BufferMC {
      * @param Tasks: atomic events to generate compounds
      * @param n:     num of atomic events
      */
-    private void dfs(ArrayList<Task> Tasks, int index, int count, boolean[] flag, int n) {
+    protected void dfs(ArrayList<Task> Tasks, int index, int count, boolean[] flag, int n) {
         if (count == 0) {
             ArrayList<Term> tempTerms = new ArrayList<Term>();
             for (int i = 0; i < n; i++) {
@@ -108,28 +110,10 @@ public abstract class BufferMC {
     }
 
     /**
-     * Considers using concurrent compounds only, so there are only concurrent compounds generated here.
-     * For n atomic input events, 2^n all combinations will be generated, and top-n of them will be kept.
+     * Considers using atomic events only, to generate compounds and filter.
+     * Different buffers may have different compound generation methods.
      */
-    public void compound_generation() {
-        ArrayList<Task> cpd = new ArrayList<Task>();
-
-        ArrayList<Task> concurrentTasks = new ArrayList<>();
-        ArrayList<PriorityPairMC> currentTasks = this.timeSlots.get(this.present).getConcurrent_observations().get_data();
-        for (int i = 0; i < currentTasks.size(); i++) {
-            Task singleTask = currentTasks.get(i).getContent();
-            concurrentTasks.add(singleTask);
-        }
-        ArrayList<Task> compoundTasks = new ArrayList<>();
-        int N = concurrentTasks.size();
-        boolean[] flag = new boolean[N];
-        for (int k = 1; k <= N; k++) {
-            dfs(concurrentTasks, -1, k, flag, N);
-        }
-        if (this.timeSlots.get(this.present).getConcurrent_observations().get_highest(false) != null) {
-            this.timeSlots.get(this.present).setHighest_concurrent_compound(this.timeSlots.get(this.present).getConcurrent_observations().get_highest(false).getContent());
-        }
-    }
+    public void compound_generation() {}
 
     /**
      * All "priority" mentioned below is not the priority in budget.
@@ -139,6 +123,7 @@ public abstract class BufferMC {
      * 3. Check all anticipations, satisfied anticipation will get a priority bonus and one more positive evidence.
      * Unsatisfied anticipations will get a priority decay and one more negative evidence.
      * 4. Unexpected observations will get a priority bonus.
+     * Different buffers shall use the same local evaluation methods.
      */
     public void local_evaluation() {
         // go through all events (including compounds) and collect their components
@@ -155,6 +140,7 @@ public abstract class BufferMC {
             for (int j = 0; j < compound_contains.size(); j++) {
                 if (this.timeSlots.get(this.present).getConcurrent_observations().get_data().get(i).getContent().getContent().equals(compound_contains.get(j))) {
                     Task tmp = this.timeSlots.get(this.present).getConcurrent_observations().get_data().get(i).getContent();
+                    // TODO
                     float priority = min((float) 0.99, (float) (tmp.getPriority() * priority_decay));
                     float durability = min((float) 0.99, (float) (tmp.getDurability() * priority_decay));
                     float quality = min((float) 0.99, (float) (tmp.getQuality() * priority_decay));
@@ -191,35 +177,39 @@ public abstract class BufferMC {
                 }
             }
             // this is for checking all the historical (temporal) compounds
-//            for (int j = 0; j < this.timeSlots.get(this.present).getHistorical_observations().get_data().size(); j++) {
-//                if (subject.equals(this.timeSlots.get(this.present).getHistorical_observations().get_data().get(j).getContent().getContent())) {
-//                    TruthValue predicted_observation_truth = TruthFunctions.deduction(this.timeSlots.get(this.present).getHistorical_observations().get_data().get(j).getContent().getSentence().getTruth(),
-//                            this.predictionTable.get_data().get(i).getContent().getSentence().getTruth());
-//                    BudgetFunctions.merge(this.predictionTable.get_data().get(i).getContent().getBudget(),
-//                            this.timeSlots.get(this.present).getHistorical_observations().get_data().get(j).getContent().getBudget());
-//                    BudgetValue predicted_observation_budget = this.predictionTable.get_data().get(i).getContent().getBudget();
-//                    Sentence sentence = new Sentence(predicate, Symbols.JUDGMENT_MARK, predicted_observation_truth, new Stamp(this.memory.getTime()));
-//                    Task task = new Task(sentence, predicted_observation_budget);
-//                    if (interval <= this.num_slot_one_side && interval >= 0) {
-//                        this.timeSlots.get((int) interval).put_anticipation(new AnticipationMC(this.predictionTable.get_data().get(i).getContent(), task));
-//                    }
-//                }
-//            }
+            if (this.temporal) {
+                for (int j = 0; j < this.timeSlots.get(this.present).getHistorical_observations().get_data().size(); j++) {
+                    if (subject.equals(this.timeSlots.get(this.present).getHistorical_observations().get_data().get(j).getContent().getContent())) {
+                        TruthValue predicted_observation_truth = TruthFunctions.deduction(this.timeSlots.get(this.present).getHistorical_observations().get_data().get(j).getContent().getSentence().getTruth(),
+                                this.predictionTable.get_data().get(i).getContent().getSentence().getTruth());
+                        BudgetFunctions.merge(this.predictionTable.get_data().get(i).getContent().getBudget(),
+                                this.timeSlots.get(this.present).getHistorical_observations().get_data().get(j).getContent().getBudget());
+                        BudgetValue predicted_observation_budget = this.predictionTable.get_data().get(i).getContent().getBudget();
+                        Sentence sentence = new Sentence(predicate, Symbols.JUDGMENT_MARK, predicted_observation_truth, new Stamp(this.memory.getTime()));
+                        Task task = new Task(sentence, predicted_observation_budget);
+                        if (interval <= this.num_slot_one_side && interval >= 0) {
+                            this.timeSlots.get((int) interval).put_anticipation(new AnticipationMC(this.predictionTable.get_data().get(i).getContent(), task));
+                        }
+                    }
+                }
+            }
         }
         this.timeSlots.get(this.present).check_anticipations(this.predictionTable);
     }
 
     /**
      * Check all concurrent compounds in the main memory. If it is in the memory, it will get a priority bonus.
+     * Different buffers shall use the same memory-based evaluations methods.
      */
     public void memory_based_evaluations() {
         ArrayList<Task> concurrent_observation_updating_list = new ArrayList<Task>();
-//        ArrayList<Task> historical_observation_updating_list = new ArrayList<Task>();
-        // check all concurrent observations with the memory, but the priority merge is not applied here
+        ArrayList<Task> historical_observation_updating_list = new ArrayList<Task>();
+        // check all concurrent observations with the memory, but this will not influence the memory directly
         for (int i = 0; i < this.timeSlots.get(this.present).getConcurrent_observations().get_data().size(); i++) {
             if (this.memory.getConcepts().contains(memory.nameToConcept(this.timeSlots.get(this.present).getConcurrent_observations().get_data().get(i).getContent().getSentence().getContent().getName()))) {
                 Task task = this.timeSlots.get(this.present).getConcurrent_observations().get_data().get(i).getContent();
                 BudgetValue previous_budget = task.getBudget();
+                // TODO
                 BudgetValue new_budget = new BudgetValue(
                         min((float) 0.99, (float) (previous_budget.getPriority() * priority_develop)),
                         min((float) 0.99, (float) (previous_budget.getDurability() * priority_develop)),
@@ -227,89 +217,44 @@ public abstract class BufferMC {
                 concurrent_observation_updating_list.add(new Task(task.getSentence(), new_budget));
             }
         }
-//        for (int i = 0; i < this.timeSlots.get(this.present).getHistorical_observations().get_data().size(); i++) {
-//            if (this.memory.getConcepts().contains(memory.nameToConcept(this.timeSlots.get(this.present).getHistorical_observations().get_data().get(i).getContent().getSentence().getContent().getName()))) {
-//                Task task = this.timeSlots.get(this.present).getHistorical_observations().get_data().get(i).getContent();
-//                BudgetValue previous_budget = task.getBudget();
-//                BudgetValue new_budget = new BudgetValue(
-//                        min((float) 0.99, (float) (previous_budget.getPriority() * priority_develop)),
-//                        min((float) 0.99, (float) (previous_budget.getDurability() * priority_develop)),
-//                        min((float) 0.99, (float) (previous_budget.getQuality() * priority_develop)));
-//                historical_observation_updating_list.add(new Task(task.getSentence(), new_budget));
-//            }
-//        }
+        // check all temporal observations with the memory, but this will not influence the memory directly
+        if (this.temporal) {
+            for (int i = 0; i < this.timeSlots.get(this.present).getHistorical_observations().get_data().size(); i++) {
+                if (this.memory.getConcepts().contains(memory.nameToConcept(this.timeSlots.get(this.present).getHistorical_observations().get_data().get(i).getContent().getSentence().getContent().getName()))) {
+                    Task task = this.timeSlots.get(this.present).getHistorical_observations().get_data().get(i).getContent();
+                    BudgetValue previous_budget = task.getBudget();
+                    // TODO
+                    BudgetValue new_budget = new BudgetValue(
+                            min((float) 0.99, (float) (previous_budget.getPriority() * priority_develop)),
+                            min((float) 0.99, (float) (previous_budget.getDurability() * priority_develop)),
+                            min((float) 0.99, (float) (previous_budget.getQuality() * priority_develop)));
+                    historical_observation_updating_list.add(new Task(task.getSentence(), new_budget));
+                }
+            }
+        }
+        // apply the change above
         for (int i = 0; i < concurrent_observation_updating_list.size(); i++) {
             this.timeSlots.get(this.present).put_concurrent_observation(concurrent_observation_updating_list.get(i));
         }
-//        for (int i = 0; i < historical_observation_updating_list.size(); i++) {
-//            this.timeSlots.get(this.present).put_historical_observation(historical_observation_updating_list.get(i));
-//        }
+        if (this.temporal) {
+            for (int i = 0; i < historical_observation_updating_list.size(); i++) {
+                this.timeSlots.get(this.present).put_historical_observation(historical_observation_updating_list.get(i));
+            }
+        }
     }
 
     /**
-     * Figure out the highest concurrent compound and figure out the highest compound (considering the highest temporal compound).
-     * Then create predictions with the highest compound as the predict.
+     * Figuring out the present attention, then the buffer shall make predictions about it.
+     * The philosophy is that "what makes this attention".
+     * Different event buffer may have different prediction generation methods.
      */
-    public void prediction_generation() {
-        // set the highest concurrent/historical observation
-        if (this.timeSlots.get(this.present).getConcurrent_observations().get_data().size() != 0 && this.timeSlots.get(this.present).getConcurrent_observations().get_data().get(0).getContent() != null) {
-            this.timeSlots.get(this.present).setHighest_concurrent_compound(this.timeSlots.get(this.present).getConcurrent_observations().get_highest(false).getContent());
-        }
-        if (this.timeSlots.get(this.present).getHistorical_observations().get_data().size() != 0 && this.timeSlots.get(this.present).getHistorical_observations().get_data().get(0).getContent() != null) {
-            this.timeSlots.get(this.present).setHighest_historical_compound(this.timeSlots.get(this.present).getHistorical_observations().get_highest(false).getContent());
-        }
-
-        // find the highest compound (from concurrent and historical highest compound)
-        if (this.timeSlots.get(this.present).getHighest_concurrent_compound() != null && this.timeSlots.get(this.present).getHighest_historical_compound() != null) {
-            if (UtilityMC.priority(this.timeSlots.get(this.present).getHighest_concurrent_compound()) > UtilityMC.priority(this.timeSlots.get(this.present).getHighest_historical_compound())) {
-                this.timeSlots.get(this.present).setHighest_compound(this.timeSlots.get(this.present).getHighest_concurrent_compound());
-            } else {
-                this.timeSlots.get(this.present).setHighest_compound(this.timeSlots.get(this.present).getHighest_historical_compound());
-            }
-        } else if (this.timeSlots.get(this.present).getHighest_concurrent_compound() != null) {
-            this.timeSlots.get(this.present).setHighest_compound(this.timeSlots.get(this.present).getHighest_concurrent_compound());
-        } else if (this.timeSlots.get(this.present).getHighest_historical_compound() != null) {
-            this.timeSlots.get(this.present).setHighest_compound(this.timeSlots.get(this.present).getHighest_historical_compound());
-        } else {
-            return;
-        }
-        // prediction generation is a temporal behavior, so it is temporally disabled
-//        for (int i = 0; i < this.num_slot_one_side; i++) {
-//            if (this.data.get(i).getHighest_concurrent_compound() != null) {
-//                Term subject = this.data.get(i).getHighest_concurrent_compound().getContent();
-//                Term predicate = this.data.get(this.curr).getHighest_compound().getContent();
-//                Term term = Implication.make(subject, predicate, TemporalRules.ORDER_BACKWARD, this.curr - i, this.memory);
-//                if (term == null) {
-//                    continue;
-//                }
-//                TruthValue truth = induction(this.data.get(i).getHighest_concurrent_compound().getSentence().getTruth(),
-//                        this.data.get(this.curr).getHighest_compound().getSentence().getTruth());
-//                BudgetValue budget = this.data.get(this.curr).getHighest_compound().getBudget();
-//                Sentence sentence = new Sentence(term, Symbols.JUDGMENT_MARK, truth, new Stamp(this.memory.getTime()));
-//                Task task = new Task(sentence, budget);
-//                this.predictions.update(new PriorityPairMC(UtilityMC.priority(task), task));
-//            }
-//            if (this.data.get(i).getHighest_historical_compound() != null) {
-//                Term subject = this.data.get(i).getHighest_historical_compound().getContent();
-//                Term predicate = this.data.get(this.curr).getHighest_compound().getContent();
-//                Term term = Implication.make(subject, predicate, TemporalRules.ORDER_BACKWARD, this.curr - i, this.memory);
-//                if (term == null) {
-//                    continue;
-//                }
-//                TruthValue truth = induction(this.data.get(i).getHighest_historical_compound().getSentence().getTruth(),
-//                        this.data.get(this.curr).getHighest_compound().getSentence().getTruth());
-//                BudgetValue budget = this.data.get(this.curr).getHighest_compound().getBudget();
-//                Sentence sentence = new Sentence(term, Symbols.JUDGMENT_MARK, truth, new Stamp(this.memory.getTime()));
-//                Task task = new Task(sentence, budget);
-//                this.predictions.update(new PriorityPairMC(UtilityMC.priority(task), task));
-//            }
-//        }
-    }
+    public void prediction_generation() {}
 
     /**
      * Buffer cycle. Four steps with some pre-processing
+     *
      * @param new_contents: atomic events captured by the sensorimotor channel
-     * @param show: for debugging, show the compounds generated and the final event selected
+     * @param show:         for debugging, show the compounds generated and the final event selected
      * @return: the final event selected
      */
     public Task step(ArrayList<Task> new_contents, Boolean show) {
@@ -326,31 +271,22 @@ public abstract class BufferMC {
             }
         }
 
+        // four steps
         this.compound_generation();
         // for debugging
-//        if (show) {
-//            for (int i = 0; i < this.data.get(this.curr).getConcurrent_observations().get_data().size(); i++) {
-//                System.out.println(this.data.get(this.curr).getConcurrent_observations().get_data().get(i).getContent().getName());
-//            }
-//        }
+        if (show) {
+            for (int i = 0; i < this.timeSlots.get(this.present).getConcurrent_observations().get_data().size(); i++) {
+                System.out.println(this.timeSlots.get(this.present).getConcurrent_observations().get_data().get(i).getContent().getName());
+            }
+        }
         this.local_evaluation();
         this.memory_based_evaluations();
         this.prediction_generation();
-
         // for debugging
-//        if (show) {
-//            System.out.println(this.timeSlots.get(this.present).getHighest_compound().getContent().getName());
-//        }
+        if (show) {
+            System.out.println(this.timeSlots.get(this.present).getHighest_compound().getContent().getName());
+        }
 
         return this.timeSlots.get(this.present).getHighest_compound();
-    }
-
-    /**
-     * Check whether this.concurrent_observations is empty, usually used for checking whether the channel has
-     * some initial atomic inputs at the beginning.
-     * @return: whether this.concurrent_observations is empty
-     */
-    public Boolean isEmpty() {
-        return this.timeSlots.get(this.present).getConcurrent_observations().get_data().size() == 0;
     }
 }

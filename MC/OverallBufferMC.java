@@ -7,13 +7,12 @@ import nars.io.Symbols;
 import nars.language.Implication;
 import nars.language.Term;
 import nars.storage.Memory;
-
 import java.util.ArrayList;
 
-public class OverallBufferMC extends EventBufferMC {
+public class OverallBufferMC extends BufferMC {
 
-    public OverallBufferMC(int num_slot, int observation_capacity, int anticipation_capacity, int prediction_capacity, Memory memory) {
-        super(num_slot, observation_capacity, anticipation_capacity, prediction_capacity, memory);
+    public OverallBufferMC(int num_slot, int observation_capacity, int anticipation_capacity, int prediction_capacity, Memory memory, Boolean temporal) {
+        super(num_slot, observation_capacity, anticipation_capacity, prediction_capacity, memory, temporal);
     }
 
     /**
@@ -42,38 +41,44 @@ public class OverallBufferMC extends EventBufferMC {
         } else {
             return;
         }
+
         // =/> prediction generation
-        for (int i = 0; i < this.num_slot_one_side; i++) {
-            if (this.timeSlots.get(i).getHighest_concurrent_compound() != null) {
-                Term subject = this.timeSlots.get(i).getHighest_concurrent_compound().getContent();
-                Term predicate = this.timeSlots.get(this.present).getHighest_compound().getContent();
-                Term term = Implication.make(subject, predicate, TemporalRules.ORDER_BACKWARD, this.present - i, this.memory);
-                if (term == null) {
-                    continue;
+        if (this.temporal) {
+            for (int i = 0; i < this.num_slot_one_side; i++) {
+                if (this.timeSlots.get(i).getHighest_concurrent_compound() != null) {
+                    Term subject = this.timeSlots.get(i).getHighest_concurrent_compound().getContent();
+                    Term predicate = this.timeSlots.get(this.present).getHighest_compound().getContent();
+                    Term term = Implication.make(subject, predicate, TemporalRules.ORDER_BACKWARD, this.present - i, this.memory);
+                    if (term == null) {
+                        continue;
+                    }
+                    TruthValue truth = TruthFunctions.induction(this.timeSlots.get(i).getHighest_concurrent_compound().getSentence().getTruth(),
+                            this.timeSlots.get(this.present).getHighest_compound().getSentence().getTruth());
+                    BudgetValue budget = this.timeSlots.get(this.present).getHighest_compound().getBudget();
+                    Sentence sentence = new Sentence(term, Symbols.JUDGMENT_MARK, truth, new Stamp(this.memory.getTime()));
+                    Task task = new Task(sentence, budget);
+                    this.predictionTable.update(new PriorityPairMC(UtilityMC.priority(task), task));
                 }
-                TruthValue truth = TruthFunctions.induction(this.timeSlots.get(i).getHighest_concurrent_compound().getSentence().getTruth(),
-                        this.timeSlots.get(this.present).getHighest_compound().getSentence().getTruth());
-                BudgetValue budget = this.timeSlots.get(this.present).getHighest_compound().getBudget();
-                Sentence sentence = new Sentence(term, Symbols.JUDGMENT_MARK, truth, new Stamp(this.memory.getTime()));
-                Task task = new Task(sentence, budget);
-                this.predictionTable.update(new PriorityPairMC(UtilityMC.priority(task), task));
-            }
-            if (this.timeSlots.get(i).getHighest_historical_compound() != null) {
-                Term subject = this.timeSlots.get(i).getHighest_historical_compound().getContent();
-                Term predicate = this.timeSlots.get(this.present).getHighest_compound().getContent();
-                Term term = Implication.make(subject, predicate, TemporalRules.ORDER_BACKWARD, this.present - i, this.memory);
-                if (term == null) {
-                    continue;
+                if (this.timeSlots.get(i).getHighest_historical_compound() != null) {
+                    Term subject = this.timeSlots.get(i).getHighest_historical_compound().getContent();
+                    Term predicate = this.timeSlots.get(this.present).getHighest_compound().getContent();
+                    Term term = Implication.make(subject, predicate, TemporalRules.ORDER_BACKWARD, this.present - i, this.memory);
+                    if (term == null) {
+                        continue;
+                    }
+                    TruthValue truth = TruthFunctions.induction(this.timeSlots.get(i).getHighest_historical_compound().getSentence().getTruth(),
+                            this.timeSlots.get(this.present).getHighest_compound().getSentence().getTruth());
+                    BudgetValue budget = this.timeSlots.get(this.present).getHighest_compound().getBudget();
+                    Sentence sentence = new Sentence(term, Symbols.JUDGMENT_MARK, truth, new Stamp(this.memory.getTime()));
+                    Task task = new Task(sentence, budget);
+                    this.predictionTable.update(new PriorityPairMC(UtilityMC.priority(task), task));
                 }
-                TruthValue truth = TruthFunctions.induction(this.timeSlots.get(i).getHighest_historical_compound().getSentence().getTruth(),
-                        this.timeSlots.get(this.present).getHighest_compound().getSentence().getTruth());
-                BudgetValue budget = this.timeSlots.get(this.present).getHighest_compound().getBudget();
-                Sentence sentence = new Sentence(term, Symbols.JUDGMENT_MARK, truth, new Stamp(this.memory.getTime()));
-                Task task = new Task(sentence, budget);
-                this.predictionTable.update(new PriorityPairMC(UtilityMC.priority(task), task));
             }
         }
+
         // =|> prediction generation
+        // though this is also called "prediction generation", but it is not a "temporal" processing
+        // since it is only about "the present time slot"
         ArrayList<Task> predictions = new ArrayList<>();
         for (int i = 0; i < this.timeSlots.get(this.present).getConcurrent_observations().get_data().size(); i++) {
             if (i == 0) {

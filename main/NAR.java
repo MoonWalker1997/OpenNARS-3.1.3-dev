@@ -80,8 +80,8 @@ public class NAR {
         inputChannels = new ArrayList(); // a container of sensorimotor channels
 
         // each sensorimotor channel contains one event buffer
-        EventBufferMC event_buffer1 = new EventBufferMC(5, 5, 5, 5, memory);
-        EventBufferMC event_buffer2 = new EventBufferMC(5, 5, 5, 5, memory);
+        EventBufferMC event_buffer1 = new EventBufferMC(5, 5, 5, 5, memory, false);
+        EventBufferMC event_buffer2 = new EventBufferMC(5, 5, 5, 5, memory, false);
 //        EventBufferMC event_buffer3 = new EventBufferMC(5, 5, 5, 5, memory);
 
         SensoryMotorChannelMC channel1 = new ExpChannel4(event_buffer1, null, memory);
@@ -96,10 +96,10 @@ public class NAR {
         outputChannels = new ArrayList(); // TODO: a container of output channels
 
         // an internal buffer
-        internalBuffer = new InternalBufferMC(5, 5, 5, 5, memory);
+        internalBuffer = new InternalBufferMC(5, 5, 5, 5, memory, false);
 
         // an overall buffer
-        overallBuffer = new OverallBufferMC(5, 5, 5, 5, memory);
+        overallBuffer = new OverallBufferMC(5, 5, 5, 5, memory, false);
     }
 
     public void addInputChannel(SensoryMotorChannelMC channel) {
