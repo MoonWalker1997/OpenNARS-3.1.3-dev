@@ -2,51 +2,49 @@ package nars.MC.channels;
 
 import nars.MC.EventBufferMC;
 import nars.MC.OperationMC;
-import nars.MC.SensoryMotorChannelMC;
+import nars.MC.SensorimotorChannelMC;
 import nars.entity.Task;
 import nars.io.StringParser;
 import nars.storage.Memory;
 
 import java.util.ArrayList;
 
-public class ExpChannel2 extends SensoryMotorChannelMC {
+public class ExpChannel2 extends SensorimotorChannelMC {
 
     private int counter = 0;
 
-    public ExpChannel2(EventBufferMC event_buffer, ArrayList<OperationMC> atomic_operations, Memory memory) {
-        super(event_buffer, atomic_operations, memory);
+    private ArrayList<OperationMC> atomic_operations = null;
+
+    public ExpChannel2(String channel_ID, EventBufferMC eventBuffer, Memory memory) {
+        super(channel_ID, eventBuffer, memory);
     }
 
     @Override
-    public Task generate_Narsese_input() {
+    protected ArrayList<Task> gathering() {
         if (counter <= 100) {
             ArrayList<Task> tasks = new ArrayList<>();
             tasks.add(StringParser.parseTask("<(*,{Channel_2}, pain) --> ^feel>. :|:", this.memory, memory.getTime()));
             System.out.println("Time " + this.counter + " | Input from Channel #2: " + "<(*,{Channel_2}, pain) --> ^feel>. :|:");
-            Task ret = this.event_buffer.step(tasks, false);
             counter += 1;
-            return ret;
+            return tasks;
         }
         else if (counter <= 300) {
             ArrayList<Task> tasks = new ArrayList<>();
             tasks.add(StringParser.parseTask("<(*,{Channel_2}, nothing) --> ^feel>. :|:", this.memory, memory.getTime()));
             System.out.println("Time " + this.counter + " | Input from Channel #2: " + "<(*,{Channel_2}, nothing) --> ^feel>. :|:");
-            Task ret = this.event_buffer.step(tasks, false);
             counter += 1;
-            return ret;
+            return tasks;
         }
         else if (counter < 400) {
             ArrayList<Task> tasks = new ArrayList<>();
             tasks.add(StringParser.parseTask("<(*,{Channel_2}, pain) --> ^feel>. :|:", this.memory, memory.getTime()));
             System.out.println("Time " + this.counter + " | Input from Channel #2: " + "<(*,{Channel_2}, pain) --> ^feel>. :|:");
-            Task ret = this.event_buffer.step(tasks, false);
             counter += 1;
-            return ret;
+            return tasks;
         }
         else {
             ArrayList<Task> tasks = new ArrayList<>();
-            Task ret = this.event_buffer.step(tasks, false);
-            return ret;
+            return tasks;
         }
     }
 }

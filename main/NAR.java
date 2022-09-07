@@ -3,7 +3,7 @@ package nars.main;
 import nars.MC.EventBufferMC;
 import nars.MC.InternalBufferMC;
 import nars.MC.OverallBufferMC;
-import nars.MC.SensoryMotorChannelMC;
+import nars.MC.SensorimotorChannelMC;
 import nars.MC.channels.ExpChannel4;
 import nars.MC.channels.ExpChannel5;
 import nars.entity.Stamp;
@@ -33,7 +33,7 @@ public class NAR {
     /**
      * The input channels of the reasoner
      */
-    protected ArrayList<SensoryMotorChannelMC> inputChannels;
+    protected ArrayList<SensorimotorChannelMC> inputChannels;
     /**
      * The output channels of the reasoner
      */
@@ -84,8 +84,8 @@ public class NAR {
         EventBufferMC event_buffer2 = new EventBufferMC(5, 5, 5, 5, memory, false);
 //        EventBufferMC event_buffer3 = new EventBufferMC(5, 5, 5, 5, memory);
 
-        SensoryMotorChannelMC channel1 = new ExpChannel4(event_buffer1, null, memory);
-        SensoryMotorChannelMC channel2 = new ExpChannel5(event_buffer2, null, memory);
+        SensorimotorChannelMC channel1 = new ExpChannel4("channel1", event_buffer1, memory);
+        SensorimotorChannelMC channel2 = new ExpChannel5("channel2", event_buffer2, memory);
 //        SensoryMotorChannelMC channel3 = new ExpChannel3(event_buffer3, null, memory);
 
         // channel registration
@@ -102,11 +102,11 @@ public class NAR {
         overallBuffer = new OverallBufferMC(5, 5, 5, 5, memory, false);
     }
 
-    public void addInputChannel(SensoryMotorChannelMC channel) {
+    public void addInputChannel(SensorimotorChannelMC channel) {
         inputChannels.add(channel);
     }
 
-    public void removeInputChannel(SensoryMotorChannelMC channel) {
+    public void removeInputChannel(SensorimotorChannelMC channel) {
         inputChannels.remove(channel);
     }
 
