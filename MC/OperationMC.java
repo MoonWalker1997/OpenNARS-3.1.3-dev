@@ -1,11 +1,14 @@
 package nars.MC;
 
-public class OperationMC {
+import nars.Slave;
 
-    private String name = "tmp";
+public abstract class OperationMC {
 
-    public void execute() {
-        System.out.println("tmp operation");
-    }
+    public String name;
+
+    // TODO
+    // I don't know how to make this "execute()" function unspecific in arguments
+    protected abstract void execute();
+    protected abstract void execute(Slave controller);
 
 }
