@@ -1,6 +1,7 @@
 package nars.MC;
 
 import nars.entity.Task;
+import nars.language.Operation;
 import nars.storage.Memory;
 
 import java.util.ArrayList;
@@ -16,6 +17,10 @@ public abstract class ChannelMC {
     protected EventBufferMC eventBuffer;
 
     private ArrayList<OperationMC> atomic_operations;
+
+    public ArrayList<OperationMC> getAtomic_operations() {
+        return this.atomic_operations;
+    }
 
     // the generated Narsese needs a timestamp from the main memory, this is the reference
     protected Memory memory;

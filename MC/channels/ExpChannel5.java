@@ -96,4 +96,7 @@ public class ExpChannel5 extends SensorimotorChannelMC {
         test_mode = true;
         counter = 91;
    }
+
+    @Override
+    public void execute(String name) {}
 }

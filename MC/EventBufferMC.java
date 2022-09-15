@@ -1,7 +1,6 @@
 package nars.MC;
 
 import nars.entity.*;
-import nars.inference.BudgetFunctions;
 import nars.inference.TemporalRules;
 import nars.inference.TruthFunctions;
 import nars.io.Symbols;
@@ -10,9 +9,7 @@ import nars.storage.Memory;
 
 import java.util.ArrayList;
 
-import static java.lang.Float.min;
-
-public class EventBufferMC extends BufferMC {
+public class EventBufferMC extends InputBufferMC {
 
     protected double priority_decay = 0.1; // when the priority will be punished, the default hyperparameter
     protected double priority_develop = 10; // when the priority will be rewarded, the default hyperparameter
@@ -27,7 +24,7 @@ public class EventBufferMC extends BufferMC {
      * For n atomic input events, 2^n all combinations will be generated, and top-n of them will be kept.
      */
     public void compound_generation() {
-        ArrayList<Task> cpd = new ArrayList<Task>();
+//        ArrayList<Task> cpd = new ArrayList<Task>();
 
         ArrayList<Task> concurrentTasks = new ArrayList<>();
         ArrayList<PriorityPairMC> currentTasks = this.timeSlots.get(this.present).getConcurrent_observations().get_data();

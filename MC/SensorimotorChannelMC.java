@@ -14,4 +14,8 @@ public abstract class SensorimotorChannelMC extends ChannelMC {
     public SensorimotorChannelMC(String channel_ID, EventBufferMC eventBuffer, Memory memory) {
         super(channel_ID, eventBuffer, memory);
     }
+
+    public abstract void execute(String name);
+
+//    public abstract void execute();
 }

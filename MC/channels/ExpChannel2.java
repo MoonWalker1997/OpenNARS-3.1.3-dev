@@ -47,4 +47,7 @@ public class ExpChannel2 extends SensorimotorChannelMC {
             return tasks;
         }
     }
+
+    @Override
+    public void execute(String name) {}
 }

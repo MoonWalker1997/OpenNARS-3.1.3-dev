@@ -1,11 +1,9 @@
 package nars.main;
 
-import nars.MC.EventBufferMC;
-import nars.MC.InternalBufferMC;
-import nars.MC.OverallBufferMC;
-import nars.MC.SensorimotorChannelMC;
+import nars.MC.*;
 import nars.MC.channels.ExpChannel4;
 import nars.MC.channels.ExpChannel5;
+import nars.MC.channels.ExpChannel6;
 import nars.entity.Stamp;
 import nars.entity.Task;
 import nars.io.OutputChannel;
@@ -32,6 +30,7 @@ public class NAR {
     protected Memory memory;
     /**
      * The input channels of the reasoner
+     * We many have other types of channels.
      */
     protected ArrayList<SensorimotorChannelMC> inputChannels;
     /**
@@ -85,11 +84,14 @@ public class NAR {
 //        EventBufferMC event_buffer3 = new EventBufferMC(5, 5, 5, 5, memory);
 
         SensorimotorChannelMC channel1 = new ExpChannel4("channel1", event_buffer1, memory);
-        SensorimotorChannelMC channel2 = new ExpChannel5("channel2", event_buffer2, memory);
+//        SensorimotorChannelMC channel2 = new ExpChannel5("channel2", event_buffer2, memory);
+
+        SensorimotorChannelMC channel2 = new ExpChannel6("channel2", event_buffer2, memory);
+
 //        SensoryMotorChannelMC channel3 = new ExpChannel3(event_buffer3, null, memory);
 
         // channel registration
-        inputChannels.add(channel1);
+//        inputChannels.add(channel1);
         inputChannels.add(channel2);
 //        inputChannels.add(channel3);
 
@@ -97,6 +99,9 @@ public class NAR {
 
         // an internal buffer
         internalBuffer = new InternalBufferMC(5, 5, 5, 5, memory, false);
+        OperationOutputBuffer OOB = new OperationOutputBuffer();
+        OOB.initialize_operation_checklist(inputChannels);
+        internalBuffer.setOOB(OOB);
 
         // an overall buffer
         overallBuffer = new OverallBufferMC(5, 5, 5, 5, memory, false);
@@ -193,6 +198,13 @@ public class NAR {
             clock++;
             tickTimer();
 
+            // get all previous inference results; they are the input of the internal buffer
+            ArrayList<Task> previous_inference_results = this.memory.getPrevious_inference_result();
+            this.memory.setPrevious_inference_result(new ArrayList<>());
+
+            // following the buffer cycle of the internal buffer, the task forwarded to the overall buffer
+            Task task_from_internal_buffer = this.internalBuffer.step(previous_inference_results, false);
+
             // a container of tasks inputted from sensorimotor channels
             ArrayList<Task> tasks_from_channels = new ArrayList<>();
             for (int i = 0; i < this.inputChannels.size(); i++) {
@@ -201,13 +213,6 @@ public class NAR {
                     tasks_from_channels.add(tmp);
                 }
             }
-
-            // get all previous inference results; they are the input of the internal buffer
-            ArrayList<Task> previous_inference_results = this.memory.getPrevious_inference_result();
-            this.memory.setPrevious_inference_result(new ArrayList<>());
-
-            // following the buffer cycle of the internal buffer, the task forwarded to the overall buffer
-            Task task_from_internal_buffer = this.internalBuffer.step(previous_inference_results, false);
 
             // merge
             if (task_from_internal_buffer != null) {

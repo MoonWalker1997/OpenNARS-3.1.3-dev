@@ -4,7 +4,11 @@ import nars.Slave;
 
 public abstract class OperationMC {
 
-    public String name;
+    private String name;
+
+    public String getName() {
+        return this.name;
+    }
 
     // TODO
     // I don't know how to make this "execute()" function unspecific in arguments

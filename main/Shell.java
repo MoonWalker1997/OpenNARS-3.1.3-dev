@@ -7,6 +7,7 @@ package nars.main;
 
 import nars.MC.channels.ExpChannel5;
 import nars.io.OutputChannel;
+import nars.io.StringParser;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -78,6 +79,12 @@ public class Shell {
     public static void main(String[] args) {
         NAR reasoner = new NAR();
 
+        // as an initialization process of a system, some basic beliefs and goals are input
+//        reasoner.memory.immediateProcess(StringParser.parseTask("<^move =/> know_the_world>.", reasoner.memory, reasoner.memory.getTime()));
+//        reasoner.memory.immediateProcess(StringParser.parseTask("<^turn =|> know_the_world>.", reasoner.memory, reasoner.memory.getTime()));
+        // it looks that the current version does not support the "goal reasoning".
+        reasoner.memory.immediateProcess(StringParser.parseTask("^turn!", reasoner.memory, reasoner.memory.getTime()));
+
         int round = 1;
         reasoner.walk(90 * round + 20);
 
@@ -91,9 +98,9 @@ public class Shell {
 
         System.out.println("\n\n\nFOR NEW IMAGES\n\n\n");
 
-        reasoner.inputChannels.get(1).test_mode();
+        ((ExpChannel5) reasoner.inputChannels.get(1)).test_mode();
 
-        for (int i = 0; i < 9; i++) {
+        for (int i = 0; i < 90; i++) {
             System.out.println(i + "=============================>");
             reasoner.cycle();
         }

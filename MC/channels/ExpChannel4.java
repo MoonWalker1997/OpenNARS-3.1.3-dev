@@ -29,4 +29,7 @@ public class ExpChannel4 extends SensorimotorChannelMC {
 //        System.out.println("Time " + this.counter + " | Input from Channel #1: " + "<(*,{Channel_1}, furnishing) --> ^see>.");
         return tasks;
     }
+
+    @Override
+    public void execute(String name) {}
 }

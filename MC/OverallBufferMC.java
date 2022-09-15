@@ -5,11 +5,13 @@ import nars.inference.TemporalRules;
 import nars.inference.TruthFunctions;
 import nars.io.Symbols;
 import nars.language.Implication;
+import nars.language.Operation;
+import nars.language.Operator;
 import nars.language.Term;
 import nars.storage.Memory;
 import java.util.ArrayList;
 
-public class OverallBufferMC extends BufferMC {
+public class OverallBufferMC extends InputBufferMC {
 
     public OverallBufferMC(int num_slot, int observation_capacity, int anticipation_capacity, int prediction_capacity, Memory memory, Boolean temporal) {
         super(num_slot, observation_capacity, anticipation_capacity, prediction_capacity, memory, temporal);
@@ -100,5 +102,63 @@ public class OverallBufferMC extends BufferMC {
             this.predictionTable.update(new PriorityPairMC(UtilityMC.priority(predictions.get(i)), predictions.get(i)));
         }
     }
+
+//    /**
+//     * A very naive checking of operators, note that "operations" (e.g., a->b) is different from "operators".
+//     * And since "operators" has an ambiguous meaning in the current code design, this method is definitely subject to
+//     * change in the future.
+//     *
+//     * @param t: a task for checking, currently, only atomic operations are expected to pass this check, e.g., ^move.
+//     * @return: just a Boolean value
+//     */
+//    private Boolean operator_check(Task t) {
+//        return t.getName().charAt(0) == '^';
+//    }
+
+//    /**
+//     * Overall buffer's buffer cycle needs to consider the input "operation goals".
+//     * This will not hurt the previous buffer cycle, but it will add something additionally.
+//     * These operation goals will also be forwarded to an output buffer.
+//     *
+//     * @param new_contents: atomic events captured by the sensorimotor channel
+//     * @param show:         for debugging, show the compounds generated and the final event selected
+//     * @return: the final event selected
+//     */
+//    public Task step(ArrayList<Task> new_contents, Boolean show) {
+//        // new slot generation
+//        this.timeSlots.remove(0);
+//        this.timeSlots.add(new SlotMC(this.observation_capacity, this.anticipation_capacity));
+//
+//        // atomic events input
+//        if (!new_contents.isEmpty()) {
+//            for (int i = 0; i < new_contents.size(); i++) {
+//                if (new_contents.get(i) != null) {
+//                    this.timeSlots.get(this.present).put_concurrent_observation(new_contents.get(i));
+//                    // check operation goals, TODO
+//                    if (this.operator_check(new_contents.get(i)) && new_contents.get(i).getSentence().isGoal()) {
+//
+//                    }
+//                }
+//            }
+//        }
+//
+//        // four steps
+//        this.compound_generation();
+//        // for debugging
+//        if (show) {
+//            for (int i = 0; i < this.timeSlots.get(this.present).getConcurrent_observations().get_data().size(); i++) {
+//                System.out.println(this.timeSlots.get(this.present).getConcurrent_observations().get_data().get(i).getContent().getName());
+//            }
+//        }
+//        this.local_evaluation();
+//        this.memory_based_evaluations();
+//        this.prediction_generation();
+//        // for debugging
+//        if (show) {
+//            System.out.println(this.timeSlots.get(this.present).getHighest_compound().getContent().getName());
+//        }
+//
+//        return this.timeSlots.get(this.present).getHighest_compound();
+//    }
 
 }
