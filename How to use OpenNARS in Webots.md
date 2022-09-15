@@ -30,4 +30,4 @@ We may find many tutorials to connect Java external controllers to Webots, but s
 
 
 
-After that, I think you can run the Java external controller if you also make the configuration in Webots (select the controller of your robot as "<extern>"). In the simulation, you can see it is not paused, but the stopwatch is not running. It is normal since Webots is waiting for your Java controller. If you run your script now, the simulation will get started.
+After that, I think you can run the Java external controller if you also make the configuration in Webots (select the controller of your robot as "extern"). In the simulation, you can see it is not paused, but the stopwatch is not running. It is normal since Webots is waiting for your Java controller. If you run your script now, the simulation will get started.
